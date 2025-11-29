@@ -15,7 +15,7 @@
       "way": "#stringMerge",
       "values": [
         "$uri",
-        "&time",
+        "*time",
         "*nonce",
         "$method",
         "*apiKey"
@@ -40,7 +40,7 @@
     "accept": "application/vnd.picacomic.com.v1+json",
     "app-channel": "*channel",
     "authorization": "$token",
-    "time": "&time",
+    "time": "*time",
     "nonce": "*nonce",
     "app-version": "2.2.1.3.3.4",
     "app-uuid": "defaultUuid",
@@ -64,14 +64,14 @@
     },
     "channel": {
       "name": "App Channel",
-      "default": "1"
+      "default": "3"
     }
   },
   "extra": {
     "apiKey": "C69BAF41DA5ABD1FFEDC6D2FEA56B",
     "nonce": [
       {
-        "way": "$uuid1"
+        "way": "&uuid1"
       },
       {
         "way": "#replaceAll",
@@ -79,6 +79,15 @@
           "-",
           ""
         ]
+      }
+    ],
+    "time": [
+      {
+        "way": "&time"
+      },
+      {
+        "way": "#~/",
+        "key": 1000
       }
     ],
     "channel": [

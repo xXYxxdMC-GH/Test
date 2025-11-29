@@ -13,10 +13,13 @@ final uuid = Uuid();
 Future<void> main() async {
   var json = jsonDecode(await File("bin/pica.json").readAsString());
   var header = decodeHeader(json);
-  var res = Dio().post("https://picaapi.picacomic.com/auth/sign-in", options: Options(headers: header),
-
+  var res = await Dio().post("https://picaapi.picacomic.com/auth/sign-in", options: Options(headers: header),
+    data: {
+      "email": "xxyxxdmcbkbk",
+      "password": "lgb20080216"
+    }
   );
-  print(res);
+  print(res.data);
 }
 
 Map<String, String> decodeHeader(Map<String, dynamic> json) {
@@ -88,7 +91,6 @@ String resolveValue(dynamic value, Map<String, dynamic> json,
     }
   }
 
-  // 普通常量
   return str;
 }
 
@@ -122,7 +124,7 @@ String getConstants(String key) {
 String getRuntimeValue(String key) {
   return switch (key) {
     "token" => token,
-    "uri" => "/auth/sign-in",
+    "uri" => "auth/sign-in",
     "method" => "POST",
     _ => ""
   };
@@ -133,7 +135,7 @@ dynamic executeMethod(Map<String, dynamic> method,
 dynamic input = "",
 }) {
   var way = method['way'];
-  if (way.toString().startsWith(r"$")) return getConstants(way.toString().substring(1));
+  if (way.toString().startsWith(r"&")) return getConstants(way.toString().substring(1));
   switch (way) {
     case "#stringMerge":
       var values = method['values'] as List;
@@ -153,6 +155,9 @@ dynamic input = "",
     case "#replaceAll":
       var keys = method['keys'] as List;
       return input.replaceAll(keys[0], "");
+    case "#~/":
+      var key = method['key'] as int;
+      return (int.parse(input) ~/ key).toString();
     default:
       throw Exception("Unknown method: $way");
   }
