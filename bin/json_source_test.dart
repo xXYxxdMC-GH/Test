@@ -8,16 +8,29 @@ import 'package:crypto/crypto.dart';
 
 var token = "";
 
-final uuid = Uuid();
+const uuid = Uuid();
+final uuidV1 = uuid.v1();
+final uuidV4 = uuid.v4();
 
 Future<void> main() async {
   var json = jsonDecode(await File("bin/pica.json").readAsString());
   var header = decodeHeader(json);
-  var res = await Dio().post("https://picaapi.picacomic.com/auth/sign-in", options: Options(headers: header),
-    data: {
-      "email": "xxyxxdmcbkbk",
-      "password": "lgb20080216"
-    }
+  var data = {
+    "email": "xxyxxdmcbkbk",
+    "password": "lgb20080216"
+  };
+  var dio = Dio();
+  //print(getHeaders("post", token, "auth/sign-in"));
+  //print(header);
+  dio.options = BaseOptions(headers: header..addAll({"content-length": data.toString().length.toString()}), responseType: ResponseType.plain, receiveDataWhenStatusError: true,);
+  var res = await dio.post("https://picaapi.picacomic.com/auth/sign-in",
+    options: Options(
+      responseType: ResponseType.plain,
+      validateStatus: (i) {
+        return i == 200 || i == 400 || i == 401;
+      },
+    ),
+    data: data
   );
   print(res.data);
 }
@@ -68,7 +81,7 @@ String resolveValue(dynamic value, Map<String, dynamic> json,
     return getConstants(k);
   }
 
-  if (str.startsWith("\$")) {
+  if (str.startsWith(r"$")) {
     var k = str.substring(1);
     return getRuntimeValue(k);
   }
@@ -109,18 +122,15 @@ String executeMethodGroup(
   return current.toString();
 }
 
-
-/// 常量解析
 String getConstants(String key) {
   return switch (key) {
-    "uuid1" => uuid.v1(),
-    "uuid4" => uuid.v4(),
+    "uuid1" => uuidV1,
+    "uuid4" => uuidV4,
     "time" => DateTime.now().millisecondsSinceEpoch.toString(),
     _ => ""
   };
 }
 
-/// 模拟运行时变量
 String getRuntimeValue(String key) {
   return switch (key) {
     "token" => token,
@@ -149,12 +159,10 @@ dynamic input = "",
     case "#HMAC-SHA256":
       var secret = method["secret"].toString();
       var hmacSha256 = Hmac(sha256, utf8.encode(secret));
-      return hmacSha256.convert(input as List<int>);
-    case "#toString":
-      return input.toString();
+      return hmacSha256.convert(utf8.encode(input));
     case "#replaceAll":
       var keys = method['keys'] as List;
-      return input.replaceAll(keys[0], "");
+      return input.replaceAll(keys[0], keys[1]);
     case "#~/":
       var key = method['key'] as int;
       return (int.parse(input) ~/ key).toString();
@@ -191,25 +199,26 @@ String executeEncryption(
         var values = step["values"] as List;
         current = values
             .map((v) => resolveValue(v, json, extra, settings))
-            .join("");
+            .join();
         break;
 
       case "#lowerCase":
-        current = current.toString().toLowerCase();
+        current = current.toLowerCase();
         break;
 
       case "#utf8.encode":
-        current = utf8.encode(current.toString());
+        current = utf8.encode(current);
         break;
 
       case "#HMAC-SHA256":
-        var secret = step["secret"].toString();
-        var hmacSha256 = Hmac(sha256, utf8.encode(secret));
-        current = hmacSha256.convert(current as List<int>);
-        break;
-
-      case "#toString":
-        current = current.toString();
+        var secret = utf8.encode(r'~d}$Q7$eIni=V)9\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn');
+        var hmacSha256 = Hmac(sha256, secret);
+        if (current is List<int>) {
+          current = hmacSha256.convert(current);
+        } else if (current is String){
+          var a = utf8.encode(current);
+          current = hmacSha256.convert(a);
+        }
         break;
 
       default:
@@ -220,4 +229,46 @@ String executeEncryption(
   return current.toString();
 }
 
+var apiKey = "C69BAF41DA5ABD1FFEDC6D2FEA56B";
 
+String createNonce() {
+  var uuid = const Uuid();
+  String nonce = uuid.v1();
+  return nonce.replaceAll("-", "");
+}
+
+String createSignature(String path, String nonce, String time, String method) {
+  String key = path + time + nonce + method + apiKey;
+  String data =
+      r'~d}$Q7$eIni=V)9\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn';
+  var s = utf8.encode(key.toLowerCase());
+  var f = utf8.encode(data);
+  var hmacSha256 = Hmac(sha256, f);
+  var digest = hmacSha256.convert(s);
+  return digest.toString();
+}
+
+Map<String, String> getHeaders(String method, String token, String url) {
+  var nonce = createNonce();
+  var time = (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString();
+  var signature = createSignature(url, nonce, time, method);
+  var headers = {
+    "api-key": "C69BAF41DA5ABD1FFEDC6D2FEA56B",
+    "accept": "application/vnd.picacomic.com.v1+json",
+    "app-channel": "3",
+    "authorization": token,
+    "time": (int.parse(getConstants("time")) ~/ 1000).toString(),
+    "nonce": nonce,
+    "app-version": "2.2.1.3.3.4",
+    "app-uuid": "defaultUuid",
+    "image-quality": "original",
+    "app-platform": "android",
+    "app-build-version": "45",
+    "Content-Type": "application/json; charset=UTF-8",
+    "user-agent": "okhttp/3.8.1",
+    "version": "v1.4.1",
+    "Host": "picaapi.picacomic.com",
+    "signature": signature,
+  };
+  return headers;
+}
