@@ -4,17 +4,18 @@
   "api_uri": "https://picaapi.picacomic.com",
   "login_uri": "/auth/sign-in",
   "login_method": "post",
-  "login_body": {
+  "login_data": {
     "email": "$user_name",
     "password": "$password"
   },
   "profile_uri": "/users/profile",
+  "profile_method": "get",
   "encryption": "mixed",
   "encryption_way": [
     {
       "way": "#stringMerge",
       "values": [
-        "$uri",
+        "*uri",
         "*time",
         "*nonce",
         "$method",
@@ -65,7 +66,8 @@
     "apiKey": "C69BAF41DA5ABD1FFEDC6D2FEA56B",
     "nonce": [
       {
-        "way": "&uuid1"
+        "way": "#input",
+        "value" : "&uuid1"
       },
       {
         "way": "#replaceAll",
@@ -75,9 +77,23 @@
         ]
       }
     ],
+    "uri": [
+      {
+        "way": "#input",
+        "value" : "$uri"
+      },
+      {
+        "way": "#replaceAll",
+        "keys": [
+          "https://picaapi.picacomic.com/",
+          ""
+        ]
+      }
+    ],
     "time": [
       {
-        "way": "&time"
+        "way": "#input",
+        "value": "&time"
       },
       {
         "way": "#~/",
