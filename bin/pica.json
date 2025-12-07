@@ -1,6 +1,7 @@
 {
   "id": "PICA",
   "name": "PicaACG",
+  "version": "1.0.0",
   "api_uri": "https://picaapi.picacomic.com",
   "login_uri": "/auth/sign-in",
   "login_method": "post",
@@ -8,10 +9,45 @@
     "email": "$user_name",
     "password": "$password"
   },
+  "token_getter": {
+    "way": "#json_extract",
+    "key": "token"
+  },
   "profile_uri": "/users/profile",
   "profile_method": "get",
-  "encryption": "mixed",
-  "encryption_way": [
+  "profile_structure": {
+    "root": "data.user",
+    "id": "_id",
+    "email": "email",
+    "gender": "gender",
+    "name": "name",
+    "slogan": "slogan",
+    "title": "title",
+    "exp": "exp",
+    "level": "level",
+    "isPunched": "isPunched",
+    "avatar": [
+      {
+        "way": "#input",
+        "value": "avatar"
+      },
+      {
+        "way": "#stringMerge",
+        "values": [
+          {
+            "way": "#json_extract",
+            "key": "fileServer"
+          },
+          "/",
+          {
+            "way": "#json_extract",
+            "key": "path"
+          }
+        ]
+      }
+    ]
+  },
+  "encryption": [
     {
       "way": "#stringMerge",
       "values": [

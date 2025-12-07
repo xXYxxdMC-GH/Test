@@ -16,7 +16,7 @@ Map<String, String> runTimeValue = {};
 
 Future<void> main() async {
   var json = jsonDecode(await File("bin/pica.json").readAsString());
-  final action = "profile";
+  final action = "login";
   final uri = json["${action}_uri"].toString().startsWith("/") ? json["api_uri"].toString() + json["${action}_uri"].toString() : json["${action}_uri"].toString();
   final method = json["${action}_method"].toString();
   runTimeValue["uri"] = uri;
@@ -30,12 +30,8 @@ Future<void> main() async {
       responseType: ResponseType.plain
   );
   var res = switch(method) {
-    "get" => await dio.get(uri,
-        data: data
-    ),
-    "post" => await dio.post(uri,
-        data: data
-    ),
+    "get" => await dio.get(uri, data: data),
+    "post" => await dio.post(uri, data: data),
     _ => {}
   };
   if (res is Response<dynamic>) print(res.data);
@@ -59,7 +55,6 @@ String resolveValue(dynamic value, Map<String, dynamic> json,
     Map<String, dynamic> extra, Map<String, dynamic> settings, {
       String? hintKey
     }) {
-
 
   if (value == null) return "";
 
@@ -96,10 +91,6 @@ String resolveValue(dynamic value, Map<String, dynamic> json,
 
   if (str.startsWith("@")) {
     var k = str.substring(1);
-
-    if (k == "encryption") {
-      return executeEncryption(json, extra, settings);
-    }
 
     var target = json[k];
 
@@ -169,9 +160,14 @@ dynamic input = "",
     case "utf8.encode":
       return utf8.encode(input.toString());
     case "HMAC-SHA256":
-      var secret = method["secret"].toString();
-      var hmacSha256 = Hmac(sha256, utf8.encode(secret));
-      return hmacSha256.convert(utf8.encode(input));
+      var secret = utf8.encode(method["secret"].toString());
+      var hmacSha256 = Hmac(sha256, secret);
+      if (input is List<int>) {
+        return hmacSha256.convert(input);
+      } else if (input is String){
+        var a = utf8.encode(input);
+        return hmacSha256.convert(a);
+      }
     case "replaceAll":
       var keys = method['keys'] as List;
       return input.replaceAll(keys[0], keys[1]);
@@ -201,47 +197,4 @@ String resolveSettings(
     }
   }
   return options.isNotEmpty ? options.first.toString() : "";
-}
-String executeEncryption(
-    Map<String, dynamic> json,
-    Map<String, dynamic> extra,
-    Map<String, dynamic> settings) {
-  var steps = json["encryption_way"] as List<dynamic>;
-  dynamic current;
-
-  for (var step in steps) {
-    var way = step["way"] as String;
-    switch (way.substring(1)) {
-      case "stringMerge":
-        var values = step["values"] as List;
-        current = values
-            .map((v) => resolveValue(v, json, extra, settings))
-            .join();
-        break;
-
-      case "lowerCase":
-        current = current.toLowerCase();
-        break;
-
-      case "utf8.encode":
-        current = utf8.encode(current);
-        break;
-
-      case "HMAC-SHA256":
-        var secret = utf8.encode(step["secret"].toString());
-        var hmacSha256 = Hmac(sha256, secret);
-        if (current is List<int>) {
-          current = hmacSha256.convert(current);
-        } else if (current is String){
-          var a = utf8.encode(current);
-          current = hmacSha256.convert(a);
-        }
-        break;
-
-      default:
-        throw Exception("Unknown encryption step: $way");
-    }
-  }
-
-  return current.toString();
 }
